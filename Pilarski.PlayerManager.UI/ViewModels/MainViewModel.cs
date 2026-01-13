@@ -1,27 +1,92 @@
-﻿using Pilarski.PlayerManager.BL;
+﻿using Microsoft.Win32;
+using Pilarski.PlayerManager.BL;
 using Pilarski.PlayerManager.Core;
 using Pilarski.PlayerManager.Interfaces;
 using Pilarski.PlayerManager.UI.Commands;
+using System;
 using System.Collections.ObjectModel;
+using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Media;
 
 namespace Pilarski.PlayerManager.UI.ViewModels
 {
     public class MainViewModel : ViewModelBase
     {
-        private PlayerManagerBL _bl = null!;
+        private readonly PlayerManagerBL _bl = null!;
         public ObservableCollection<IPlayer> Players { get; set; } = new ObservableCollection<IPlayer>();
         public ObservableCollection<IClub> Clubs { get; set; } = new ObservableCollection<IClub>();
-        public IPlayer? SelectedPlayer { get; set; }
-        public IClub? SelectedClub { get; set; }
-        public ICommand AddPlayerCommand { get; set; } = null!;
-        public ICommand AddClubCommand { get; set; } = null!;
-        public ICommand DeletePlayerCommand { get; set; } = null!;
-        public ICommand DeleteClubCommand { get; set; } = null!;
-        public ICommand EditPlayerCommand { get; set; } = null!;
-        public ICommand EditClubCommand { get; set; } = null!;
+
+        private IPlayer? _selectedPlayer;
+        public IPlayer? SelectedPlayer
+        {
+            get => _selectedPlayer;
+            set
+            {
+                _selectedPlayer = value;
+                OnPropertyChanged(nameof(SelectedPlayer));
+                IsAddingOrEditingPlayer = false;
+            }
+        }
+
+        private IClub? _selectedClub;
+        public IClub? SelectedClub
+        {
+            get => _selectedClub;
+            set
+            {
+                _selectedClub = value;
+                OnPropertyChanged(nameof(SelectedClub));
+                IsAddingOrEditingClub = false;
+            }
+        }
+
+        private bool _isAddingOrEditingClub;
+        public bool IsAddingOrEditingClub
+        {
+            get => _isAddingOrEditingClub;
+            set
+            {
+                _isAddingOrEditingClub = value;
+                OnPropertyChanged(nameof(IsAddingOrEditingClub));
+            }
+        }
+
+        private IClub? _clubInEdit;
+        public IClub? ClubInEdit
+        {
+            get => _clubInEdit;
+            set
+            {
+                _clubInEdit = value;
+                OnPropertyChanged(nameof(ClubInEdit));
+            }
+        }
+
+        private bool _isAddingOrEditingPlayer;
+        public bool IsAddingOrEditingPlayer
+        {
+            get => _isAddingOrEditingPlayer;
+            set
+            {
+                _isAddingOrEditingPlayer = value;
+                OnPropertyChanged(nameof(IsAddingOrEditingPlayer));
+            }
+        }
+
+        public ICommand AddPlayerCommand { get; }
+        public ICommand AddClubCommand { get; }
+        public ICommand DeletePlayerCommand { get; }
+        public ICommand DeleteClubCommand { get; }
+        public ICommand EditPlayerCommand { get; }
+        public ICommand EditClubCommand { get; }
+        public ICommand SaveClubCommand { get; }
+        public ICommand CancelClubEditCommand { get; }
+        public ICommand SelectLogoCommand { get; }
+
+        public Array Countries => Enum.GetValues(typeof(Country));
+
         public MainViewModel()
         {
             try
@@ -29,10 +94,15 @@ namespace Pilarski.PlayerManager.UI.ViewModels
                 _bl = new PlayerManagerBL();
                 AddPlayerCommand = new RelayCommand(AddPlayer);
                 AddClubCommand = new RelayCommand(AddClub);
-                DeletePlayerCommand = new RelayCommand(DeletePlayer);
-                DeleteClubCommand = new RelayCommand(DeleteClub);
-                EditPlayerCommand = new RelayCommand(EditPlayer);
-                EditClubCommand = new RelayCommand(EditClub);
+                DeletePlayerCommand = new RelayCommand(DeletePlayer, () => SelectedPlayer != null);
+                DeleteClubCommand = new RelayCommand(DeleteClub, () => SelectedClub != null);
+                EditPlayerCommand = new RelayCommand(EditPlayer, () => SelectedPlayer != null);
+                EditClubCommand = new RelayCommand(EditClub, () => SelectedClub != null);
+                
+                SaveClubCommand = new RelayCommand(SaveClub, () => ClubInEdit != null);
+                CancelClubEditCommand = new RelayCommand(CancelClubEdit);
+                SelectLogoCommand = new RelayCommand(SelectLogo, () => ClubInEdit != null);
+
                 LoadData();
             }
             catch (Exception ex)
@@ -41,6 +111,7 @@ namespace Pilarski.PlayerManager.UI.ViewModels
                 Application.Current.Shutdown();
             }
         }
+
         private void LoadData()
         {
             var playersList = _bl.GetPlayers();
@@ -50,165 +121,112 @@ namespace Pilarski.PlayerManager.UI.ViewModels
             Clubs.Clear();
             foreach (var c in clubsList) Clubs.Add(c);
         }
+
         private void AddPlayer()
         {
-            var newPlayer = _bl.CreatePlayer();
-            var editor = new PlayerWindow();
-            editor.DataContext = newPlayer;
-            if (editor.ShowDialog() == true)
-            {
-                try
-                {
-                    _bl.AddPlayer(newPlayer);
-                    LoadData();
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Error adding player: {ex.Message}", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
-                }
-            }
+            // Logic to be implemented
         }
+
         private void AddClub()
         {
-            // 1. Create empty club via BL
-            var newClub = _bl.CreateClub();
-
-            // 2. Open Window
-            var editor = new ClubWindow();
-            editor.DataContext = newClub;
-
-            if (editor.ShowDialog() == true)
-            {
-                try
-                {
-                    // 3. Save via BL
-                    _bl.AddClub(newClub);
-
-                    // 4. Reload lists
-                    LoadData();
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Error adding club: {ex.Message}", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
-                }
-            }
+            SelectedClub = null;
+            ClubInEdit = _bl.CreateClub();
+            IsAddingOrEditingClub = true;
         }
+
         private void DeletePlayer()
         {
-            if (SelectedPlayer == null) return;
-            var result = MessageBox.Show($"Are you sure you want to delete {SelectedPlayer.Name}?",
-                                         "Confirm Delete", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-            if (result == MessageBoxResult.Yes)
-            {
-                try
-                {
-                    _bl.DeletePlayer(SelectedPlayer.Id);
-                    LoadData();
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Error deleting player: {ex.Message}");
-                }
-            }
+            // Logic to be implemented
         }
+
         private void DeleteClub()
         {
-            if (SelectedClub == null) return;
-            var result = MessageBox.Show($"Are you sure you want to delete {SelectedClub.Name}?\n\nWARNING: All players in this club will become Free Agents!",
-                                         "Confirm Club Delete", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-            if (result == MessageBoxResult.Yes)
-            {
-                try
-                {
-                    _bl.DeleteClub(SelectedClub.Id);
-                    LoadData();
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Error deleting club: {ex.Message}");
-                }
-            }
+            // Logic to be implemented
         }
+
         private void EditPlayer()
         {
-            if (SelectedPlayer == null) return;
-
-            // 1. Tworzymy "Brudnopis" (pusty obiekt)
-            IPlayer draft = _bl.CreatePlayer();
-
-            // 2. Kopiujemy dane z oryginału do brudnopisu
-            CopyPlayerValues(SelectedPlayer, draft);
-
-            // 3. Otwieramy okno, ale wiążemy je z BRUDNOPISEM (draft), a nie oryginałem
-            var editor = new PlayerWindow();
-            editor.DataContext = draft;
-
-            if (editor.ShowDialog() == true)
-            {
-                try
-                {
-                    // 4. Jeśli user kliknął SAVE: Przepisujemy zmiany z brudnopisu do oryginału
-                    CopyPlayerValues(draft, SelectedPlayer);
-
-                    // 5. Zapisujemy oryginał w bazie
-                    _bl.UpdatePlayer(SelectedPlayer);
-
-                    // 6. Odświeżamy widok
-                    LoadData();
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Error updating player: {ex.Message}", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    // Jeśli wystąpił błąd zapisu, LoadData przywróci stare dane z bazy
-                    LoadData();
-                }
-            }
-            // Jeśli user kliknął CANCEL: Nic nie robimy. Oryginał (SelectedPlayer) nigdy nie został tknięty.
+            // Logic to be implemented
         }
 
         private void EditClub()
         {
             if (SelectedClub == null) return;
+            ClubInEdit = _bl.CreateClub();
+            CopyClubValues(SelectedClub, ClubInEdit);
+            IsAddingOrEditingClub = true;
+        }
 
-            // 1. Brudnopis
-            IClub draft = _bl.CreateClub();
-            CopyClubValues(SelectedClub, draft);
+        private void SaveClub()
+        {
+            if (ClubInEdit == null) return;
 
-            var editor = new ClubWindow();
-            editor.DataContext = draft; // Edytujemy kopię
-
-            if (editor.ShowDialog() == true)
+            // Handle logo copy
+            if (!string.IsNullOrEmpty(ClubInEdit.ImagePath) && File.Exists(ClubInEdit.ImagePath))
             {
-                try
+                string destinationFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "PlayerManagerData", "clubs");
+                Directory.CreateDirectory(destinationFolder);
+                string destinationPath = Path.Combine(destinationFolder, Path.GetFileName(ClubInEdit.ImagePath));
+                
+                if (ClubInEdit.ImagePath != destinationPath)
                 {
-                    // Zatwierdzamy zmiany: Kopia -> Oryginał
-                    CopyClubValues(draft, SelectedClub);
-
-                    _bl.UpdateClub(SelectedClub);
-                    LoadData();
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Error updating club: {ex.Message}", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    LoadData();
+                    try
+                    {
+                        File.Copy(ClubInEdit.ImagePath, destinationPath, true);
+                        ClubInEdit.ImagePath = destinationPath;
+                    }
+                    catch (Exception ex)
+                    {
+                         MessageBox.Show($"Error copying image: {ex.Message}");
+                         // Decide if we should continue saving without the image or stop
+                         return;
+                    }
                 }
             }
+            
+            try
+            {
+                if (ClubInEdit.Id == 0) // New club
+                {
+                    _bl.AddClub(ClubInEdit);
+                }
+                else // Existing club
+                {
+                    _bl.UpdateClub(ClubInEdit);
+                }
+            }
+            catch (ArgumentException ex)
+            {
+                MessageBox.Show($"Validation Error: {ex.Message}");
+                return;
+            }
+            
+            LoadData();
+            IsAddingOrEditingClub = false;
+            ClubInEdit = null;
         }
-        // Przepisuje dane z źródła (source) do celu (target)
-        private void CopyPlayerValues(IPlayer source, IPlayer target)
+
+        private void CancelClubEdit()
         {
-            target.Id = source.Id;
-            target.Name = source.Name;
-            target.Nationality = source.Nationality;
-            target.ClubId = source.ClubId;
-            target.BirthYear = source.BirthYear;
-            target.MarketValue = source.MarketValue;
-            target.Position = source.Position;
-            target.Foot = source.Foot;
-            target.SkillMoves = source.SkillMoves;
-            target.WeakFoot = source.WeakFoot;
-            target.Overall = source.Overall;
-            target.ImagePath = source.ImagePath;
+            IsAddingOrEditingClub = false;
+            ClubInEdit = null;
+        }
+
+        private void SelectLogo()
+        {
+            if (ClubInEdit == null) return;
+
+            var openFileDialog = new OpenFileDialog
+            {
+                Filter = "Image files (*.png;*.jpeg;*.jpg)|*.png;*.jpeg;*.jpg|All files (*.*)|*.*",
+                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures)
+            };
+
+            if (openFileDialog.ShowDialog() == true)
+            {
+                ClubInEdit.ImagePath = openFileDialog.FileName;
+                OnPropertyChanged(nameof(ClubInEdit)); // Notify view that the property has changed
+            }
         }
 
         private void CopyClubValues(IClub source, IClub target)
