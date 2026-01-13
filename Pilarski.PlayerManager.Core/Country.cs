@@ -1,0 +1,30 @@
+﻿namespace Pilarski.PlayerManager.Core
+{
+    public enum Country
+    {
+        Argentina,
+        Australia,
+        Belgium,
+        Brazil,
+        Canada,
+        Colombia,
+        Croatia,
+        England,
+        France,
+        Germany,
+        Italy,
+        Japan,
+        Mexico,
+        Morocco,
+        Netherlands,
+        Nigeria,
+        Poland,
+        Portugal,
+        SaudiArabia,
+        Senegal,
+        SouthKorea,
+        Spain,
+        Uruguay,
+        USA
+    }
+}
