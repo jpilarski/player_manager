@@ -6,7 +6,11 @@
         xmlns:local="clr-namespace:Pilarski.PlayerManager.UI"
         xmlns:converters="clr-namespace:Pilarski.PlayerManager.UI.Converters"
         mc:Ignorable="d"
-        Title="Player Manager 2026" Height="650" Width="1100"
+        
+        Title="Player Manager"
+        WindowState="Maximized"
+        Icon="/app_logo.ico"
+        Height="650" Width="1100"
         WindowStartupLocation="CenterScreen">
 
     <Window.Resources>

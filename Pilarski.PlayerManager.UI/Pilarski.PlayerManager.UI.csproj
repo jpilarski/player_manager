@@ -9,6 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="app_logo.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Pilarski.PlayerManager.BL\Pilarski.PlayerManager.BL.csproj" />
     <ProjectReference Include="..\Pilarski.PlayerManager.Core\Pilarski.PlayerManager.Core.csproj" />
     <ProjectReference Include="..\Pilarski.PlayerManager.Interfaces\Pilarski.PlayerManager.Interfaces.csproj" />
@@ -16,6 +20,10 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="app_logo.ico" />
   </ItemGroup>
 
 </Project>
