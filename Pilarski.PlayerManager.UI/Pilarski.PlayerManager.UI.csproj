@@ -26,8 +26,4 @@
     <Resource Include="app_logo.ico" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Theme\" />
-  </ItemGroup>
-
 </Project>
